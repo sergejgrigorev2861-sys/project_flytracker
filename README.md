@@ -25,18 +25,18 @@ git clone <url-репозитория>
 cd project_flytracker
 poetry install
 ```
-## Запуск
+## 🚀 Запуск
 ```
 poetry run python main.py
 ```
-## Тесты
+## 🧪 Тесты
 ```
 poetry run pytest -v
 poetry run pytest --cov=src --cov-report=term
 Покрытие тестами
 100%
 ```
-## Структура проекта
+## 📁 Структура проекта
 ```
 project_flytracker/
 ├── data/                  # JSON-файлы с самолётами
