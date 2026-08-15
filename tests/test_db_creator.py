@@ -1,7 +1,6 @@
-import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
 from src.db.db_creator import DBCreator
-from src.db.db_connector import DBConnector
 
 
 class TestDBCreator:

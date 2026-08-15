@@ -1,7 +1,8 @@
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import patch, Mock
+
 from src.db.db_loader import DBLoader
-from src.db.db_connector import DBConnector
 
 
 class TestDBLoader:

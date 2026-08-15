@@ -1,5 +1,7 @@
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock, MagicMock
+
 from src.db.db_connector import DBConnector
 
 
