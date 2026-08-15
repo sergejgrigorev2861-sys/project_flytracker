@@ -14,7 +14,7 @@ venv/
 # Testing
 .pytest_cache/
 .coverage
-#htmlcov/  # временно закомментировано для сдачи курсовой
+htmlcov/
 
 # Project specific
 data/*.json
@@ -22,3 +22,5 @@ data/*.json
 
 # Poetry
 poetry.lock
+
+*.pyc

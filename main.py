@@ -1,41 +1,86 @@
-from src.api import APIAdapter
-from src.aeroplane import Aeroplane
-from src.json_storage import JSONStorage
+from src.config import config
+from src.db.db_connector import DBConnector
+from src.db.db_creator import DBCreator
+from src.db.db_loader import DBLoader
+from src.api.api_client import APIClient
+from src.db.db_manager import DBManager
 
 
-def user_interaction():
-    api = APIAdapter()
-    storage = JSONStorage()
+def main():
+    """Основная функция приложения."""
+    print("🛫 Загрузка данных о самолётах в PostgreSQL...")
 
-    print("\n=== Трекер самолётов ===")
-    country = input("Введите название страны: ").strip()
+    with DBConnector() as db:
+        # 1. Удаляем старую таблицу aeroplanes
+        try:
+            db.execute_query("DROP TABLE IF EXISTS aeroplanes CASCADE;")
+            print("✅ Старая таблица aeroplanes удалена.")
+        except Exception as e:
+            print(f"⚠️ Ошибка при удалении таблицы: {e}")
 
-    api.get_aeroplanes(country)
-    if api.aeroplanes is None:
-        print("❌ Страна не найдена или ошибка API.")
-        return
+        # 2. Создаём таблицы заново с DOUBLE PRECISION
+        DBCreator.create_tables(db)
 
-    aeroplanes = Aeroplane.cast_to_object_list(api.aeroplanes)
-    print(f"✅ Найдено самолётов: {len(aeroplanes)}")
+        # 3. Очищаем таблицы
+        loader = DBLoader(db)
+        loader.clear_tables()
 
-    if not aeroplanes:
-        print("Нет данных о самолётах.")
-        return
+        # 4. Загружаем данные по странам
+        countries = config.COUNTRIES
+        for country_name in countries:
+            coords = APIClient.get_country_coordinates(country_name)
+            if not coords:
+                continue
+            lat, lon = coords
+            country_id = loader.save_country(country_name, lat, lon)
+            if not country_id:
+                continue
+            print(f"✅ Страна сохранена с ID: {country_id}")
 
-    # Сохраняем в JSON
-    for plane in aeroplanes:
-        storage.add_aeroplane(plane)
+            states = APIClient.get_states_by_bbox(lat - 10, lon - 10, lat + 10, lon + 10)
+            loader.save_aeroplanes(country_id, states)
 
-    # Топ N по высоте
-    try:
-        top_n = int(input("Введите количество самолётов для топа по высоте: "))
-        sorted_planes = sorted(aeroplanes, key=lambda x: x.altitude, reverse=True)
-        for i, p in enumerate(sorted_planes[:top_n], 1):
-            print(f"{i}. {p.callsign} | {p.country} | Высота: {p.altitude:.1f} м | Скорость: {p.velocity:.1f} м/с")
-    except ValueError:
-        print("Некорректный ввод.")
+        # 5. Статистика
+        result = db.execute_query("""
+            SELECT c.name, COUNT(a.id)
+            FROM countries c
+            LEFT JOIN aeroplanes a ON c.id = a.country_id
+            GROUP BY c.name
+            ORDER BY c.name;
+        """)
+        print("\n📊 Статистика по странам:")
+        for row in result:
+            print(f"  {row[0]}: {row[1]} самолётов")
+
+        # 6. Аналитические запросы
+        print("\n📊 Аналитические данные:")
+        manager = DBManager(db)
+
+        # 6.1 Страны и количество самолётов
+        print("\n📍 Страны и количество самолётов:")
+        for row in manager.get_countries_and_aeroplanes_count():
+            print(f"  {row[0]}: {row[1]}")
+
+        # 6.2 Все самолёты (первые 5)
+        print("\n✈️ Самолёты (первые 5):")
+        for row in manager.get_all_aeroplanes()[:5]:
+            print(f"  {row}")
+
+        # 6.3 Средняя скорость
+        avg_speed = manager.get_avg_speed()
+        print(f"\n📊 Средняя скорость: {avg_speed:.2f} узлов")
+
+        # 6.4 Самолёты со скоростью выше средней
+        print("\n🚀 Самолёты со скоростью выше средней:")
+        for row in manager.get_aeroplanes_with_higher_speed()[:5]:
+            print(f"  {row}")
+
+        # 6.5 Поиск по ключевому слову (например, 'AAL' для American Airlines)
+        keyword = "AAL"
+        print(f"\n🔍 Самолёты с позывным, содержащим '{keyword}':")
+        for row in manager.get_aeroplanes_with_keyword(keyword)[:5]:
+            print(f"  {row}")
 
 
 if __name__ == "__main__":
-    user_interaction()
-    
+    main()
