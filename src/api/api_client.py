@@ -36,7 +36,7 @@ class APIClient:
                 config.NOMINATIM_URL,
                 params=params,
                 headers=headers,
-                timeout=10
+                timeout=15
             )
             # Если ответ 403, пробуем с другим User-Agent
             if response.status_code == 403:
